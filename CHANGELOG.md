@@ -25,3 +25,9 @@ All notable changes to this project will be documented in this file.
 
 - Updated LICENSE and aligned wording with D365 UPDATE
 - Rewrote README.md in English and added language links
+
+## [0.1.3] - 2026-01-26
+
+### Changed
+
+- Changed license from CC BY-NC 4.0 to CC BY-NC-SA 4.0
