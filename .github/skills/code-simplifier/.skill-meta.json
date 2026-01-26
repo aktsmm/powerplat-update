@@ -1,0 +1,8 @@
+{
+  "name": "code-simplifier",
+  "source": "aktsmm-Agent-Skills",
+  "description": "Guide for simplifying and refining code after coding sessions. Use when cleaning up complex code, reviewing PRs for readability, or applying consistent refactoring patterns.",
+  "whenToUse": "After completing a coding task or writing a logical chunk of code",
+  "categories": [],
+  "installedAt": "2026-01-26T16:40:21.227Z"
+}

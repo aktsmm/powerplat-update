@@ -6,6 +6,10 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
 import { getDatabase, closeDatabase } from "./database/database.js";
+import {
+  needsBackgroundSync,
+  startBackgroundSync,
+} from "./services/sync.service.js";
 import * as logger from "./utils/logger.js";
 
 async function main(): Promise<void> {
@@ -19,12 +23,21 @@ async function main(): Promise<void> {
   );
 
   // データベース初期化
+  let db;
   try {
-    getDatabase();
+    db = getDatabase();
     logger.info("Database initialized");
   } catch (error) {
     logger.error("Failed to initialize database", { error: String(error) });
     process.exit(1);
+  }
+
+  // 🚀 起動時にバックグラウンド同期を自動開始（データが古い場合のみ）
+  if (needsBackgroundSync(db, 1)) {
+    logger.info("Data is stale, starting background sync on startup...");
+    startBackgroundSync(db);
+  } else {
+    logger.info("Data is fresh, skipping startup sync");
   }
 
   // サーバー作成

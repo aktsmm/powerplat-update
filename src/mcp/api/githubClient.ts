@@ -221,6 +221,60 @@ function parseFrontmatter(content: string): {
 }
 
 /**
+ * リポジトリの最新コミットSHAを取得（軽量API）
+ */
+export async function getRepositoryLatestSha(
+  owner: string,
+  repo: string,
+  branch: string,
+  token?: string,
+): Promise<string | null> {
+  try {
+    const url = `https://api.github.com/repos/${owner}/${repo}/commits/${branch}`;
+    const response = await githubFetch(url, token);
+    const data = (await response.json()) as { sha: string };
+    return data.sha;
+  } catch (error) {
+    logger.error("Failed to get repository latest SHA", {
+      owner,
+      repo,
+      error: String(error),
+    });
+    return null;
+  }
+}
+
+/**
+ * 全リポジトリの最新SHAを並列取得
+ */
+export async function getAllRepositoryLatestShas(
+  token?: string,
+): Promise<Map<string, string>> {
+  const results = new Map<string, string>();
+
+  logger.info("Fetching latest SHAs for all repositories (parallel)", {
+    repoCount: TARGET_REPOSITORIES.length,
+  });
+
+  await Promise.all(
+    TARGET_REPOSITORIES.map(async (repoConfig) => {
+      const sha = await getRepositoryLatestSha(
+        "MicrosoftDocs",
+        repoConfig.repo,
+        "main",
+        token,
+      );
+      if (sha) {
+        results.set(repoConfig.repo, sha);
+      }
+    }),
+  );
+
+  logger.info("Fetched latest SHAs", { count: results.size });
+  return results;
+}
+
+/**
  * リポジトリのツリーを取得
  */
 export async function getRepositoryTree(

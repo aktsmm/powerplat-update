@@ -332,3 +332,41 @@ export function getRecentCommits(
     )
     .all(limit) as PowerPlatCommit[];
 }
+
+/**
+ * リポジトリの保存済みSHAを取得
+ */
+export function getRepoSha(db: Database.Database, repo: string): string | null {
+  const row = db
+    .prepare("SELECT latest_sha FROM repo_sha WHERE repo = ?")
+    .get(repo) as { latest_sha: string } | undefined;
+  return row?.latest_sha ?? null;
+}
+
+/**
+ * 全リポジトリの保存済みSHAを取得
+ */
+export function getAllRepoShas(db: Database.Database): Map<string, string> {
+  const rows = db.prepare("SELECT repo, latest_sha FROM repo_sha").all() as {
+    repo: string;
+    latest_sha: string;
+  }[];
+  return new Map(rows.map((r) => [r.repo, r.latest_sha]));
+}
+
+/**
+ * リポジトリのSHAを保存
+ */
+export function upsertRepoSha(
+  db: Database.Database,
+  repo: string,
+  sha: string,
+): void {
+  db.prepare(
+    `INSERT INTO repo_sha (repo, latest_sha, updated_at)
+     VALUES (?, ?, datetime('now'))
+     ON CONFLICT(repo) DO UPDATE SET
+       latest_sha = excluded.latest_sha,
+       updated_at = datetime('now')`,
+  ).run(repo, sha);
+}

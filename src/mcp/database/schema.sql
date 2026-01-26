@@ -96,3 +96,10 @@ CREATE TRIGGER IF NOT EXISTS powerplat_updates_ad AFTER DELETE ON powerplat_upda
     INSERT INTO powerplat_updates_fts(powerplat_updates_fts, rowid, title, description)
     VALUES ('delete', old.id, old.title, old.description);
 END;
+
+-- リポジトリ最新コミットSHA（差分チェック用）
+CREATE TABLE IF NOT EXISTS repo_sha (
+    repo TEXT PRIMARY KEY,
+    latest_sha TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

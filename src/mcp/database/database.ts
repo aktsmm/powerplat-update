@@ -165,7 +165,7 @@ function applySchema(db: Database.Database): void {
 
 /**
  * スキーママイグレーションを適用
- * 既存のデータベースに新しいカラムを追加
+ * 既存のデータベースに新しいカラムやテーブルを追加
  */
 export function migrateSchema(db: Database.Database): void {
   // first_commit_date カラムが存在するか確認
@@ -181,6 +181,23 @@ export function migrateSchema(db: Database.Database): void {
 
   if (!hasFirstCommitDate) {
     db.exec("ALTER TABLE powerplat_updates ADD COLUMN first_commit_date TEXT");
+  }
+
+  // repo_sha テーブルが存在するか確認（v0.1.9で追加）
+  const hasRepoShaTable = db
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='repo_sha'",
+    )
+    .get() as { name: string } | undefined;
+
+  if (!hasRepoShaTable) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS repo_sha (
+        repo TEXT PRIMARY KEY,
+        latest_sha TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
   }
 }
 

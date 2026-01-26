@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.9] - 2026-01-27
+
+### Added
+
+- **Repository-level diff check**: Compares latest commit SHA for each repository before sync
+  - No changes detected → Skip sync entirely (6s instead of 15s)
+  - Only changed repositories trigger full tree fetch
+- **Auto background sync on startup**: MCP server automatically syncs in background when data is stale (>1 hour)
+
+### Performance
+
+- No changes: 6 seconds (97% faster than original 150s)
+- With changes: 15 seconds (parallel processing)
+- Background sync runs automatically, user never waits
+
 ## [0.1.8] - 2026-01-27
 
 ### Fixed

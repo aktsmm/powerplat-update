@@ -15,6 +15,7 @@ import {
   getRecentCommits,
   getRecentlyChangedFiles,
   getChangedFilesSince,
+  getAllRepositoryLatestShas,
 } from "../api/githubClient.js";
 import {
   upsertUpdate,
@@ -23,6 +24,8 @@ import {
   getSyncCheckpoint,
   updateCommitDate,
   getFileShaMap,
+  getAllRepoShas,
+  upsertRepoSha,
 } from "../database/queries.js";
 import * as logger from "../utils/logger.js";
 
@@ -162,6 +165,44 @@ export async function syncFromGitHub(
       hasToken: !!token,
       incremental,
     });
+
+    // 🚀 リポジトリレベル差分チェック（軽量API）
+    if (!force) {
+      const savedRepoShas = getAllRepoShas(db);
+      const latestRepoShas = await getAllRepositoryLatestShas(token);
+
+      // 変更があったリポジトリを特定
+      const changedRepos: string[] = [];
+      for (const [repo, latestSha] of latestRepoShas) {
+        const savedSha = savedRepoShas.get(repo);
+        if (savedSha !== latestSha) {
+          changedRepos.push(repo);
+        }
+      }
+
+      logger.info("Repository-level diff check", {
+        totalRepos: latestRepoShas.size,
+        changedRepos: changedRepos.length,
+        changed: changedRepos,
+      });
+
+      // 変更なし → スキップ
+      if (changedRepos.length === 0) {
+        logger.info("No repository changes detected, skipping sync");
+        updateSyncCheckpoint(db, { syncStatus: "idle" });
+        return {
+          success: true,
+          updatesCount: checkpoint.recordCount,
+          commitsCount: 0,
+          durationMs: Date.now() - startTime,
+        };
+      }
+
+      // SHAを保存
+      for (const [repo, sha] of latestRepoShas) {
+        upsertRepoSha(db, repo, sha);
+      }
+    }
 
     // インクリメンタル同期: 前回同期以降に変更されたファイルのみ取得
     if (incremental && !force && checkpoint.lastSync) {
