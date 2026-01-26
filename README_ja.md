@@ -1,4 +1,6 @@
-# Power Platform UPDATE MCP
+# PowerPlat UPDATE MCP
+
+[English](README.md) | 日本語
 
 [![Beta](https://img.shields.io/badge/Status-Beta-yellow)]()
 [![VS Code](https://img.shields.io/badge/VS%20Code-Extension-blue)]()

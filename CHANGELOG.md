@@ -18,3 +18,10 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Updated extension icon to a Power Platform–distinct color scheme
+
+## [0.1.2] - 2026-01-26
+
+### Changed
+
+- Updated LICENSE and aligned wording with D365 UPDATE
+- Rewrote README.md in English and added language links
