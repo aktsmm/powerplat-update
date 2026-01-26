@@ -81,10 +81,16 @@ export async function syncFromGitHub(
       };
     }
 
-    logger.info("Starting sync from GitHub", { force, maxFiles });
+    logger.info("Starting sync from GitHub", {
+      force,
+      maxFiles,
+      hasToken: !!token,
+    });
 
     // what's-new ファイル一覧を取得（SHA 含む）
+    logger.info("Fetching what's-new files from GitHub...");
     const files = await getWhatsNewFiles(token);
+    logger.info("Fetched files from GitHub", { count: files.length });
 
     // 既存ファイルの SHA マップを取得
     const existingShaMap = getFileShaMap(db);
@@ -110,9 +116,11 @@ export async function syncFromGitHub(
     let errorCount = 0;
 
     // 各ファイルを処理（変更分のみ）
+    logger.info("Processing files...", { count: filesToProcess.length });
     for (const file of filesToProcess) {
       try {
         const repoName = getRepoNameFromPath(file.path);
+        logger.info("Fetching file", { path: file.path, repoName });
         const update = await fetchAndParseFile(
           file.rawUrl,
           file.path,
@@ -123,14 +131,20 @@ export async function syncFromGitHub(
         update.commitSha = file.sha;
         upsertUpdate(db, update);
         updatesCount++;
+        logger.info("Successfully processed file", {
+          path: file.path,
+          title: update.title,
+        });
       } catch (error) {
         errorCount++;
-        logger.warn("Failed to process file", {
+        logger.error("Failed to process file", {
           path: file.path,
-          error: String(error),
+          rawUrl: file.rawUrl,
+          error: error instanceof Error ? error.stack : String(error),
         });
       }
     }
+    logger.info("File processing complete", { updatesCount, errorCount });
 
     // コミット履歴を取得
     const since = force ? undefined : checkpoint.lastSync;

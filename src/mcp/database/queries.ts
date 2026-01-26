@@ -229,16 +229,32 @@ export function searchUpdates(
   }
 
   // 日付フィルタ
+  // release_date は ISO 形式 (YYYY-MM-DD) で保存されている
+  // 古いデータ (MM/DD/YYYY形式) も考慮してCASE文で正規化
   if (filters.dateFrom) {
     conditions.push(`(
-      (d.release_date IS NOT NULL AND d.release_date >= ?)
+      (d.release_date IS NOT NULL AND 
+        CASE 
+          WHEN d.release_date LIKE '____-__-__' THEN d.release_date
+          WHEN d.release_date LIKE '__/__/____' THEN 
+            substr(d.release_date, 7, 4) || '-' || substr(d.release_date, 1, 2) || '-' || substr(d.release_date, 4, 2)
+          ELSE d.release_date
+        END >= ?
+      )
       OR (d.commit_date IS NOT NULL AND d.commit_date >= ?)
     )`);
     params.push(filters.dateFrom, filters.dateFrom);
   }
   if (filters.dateTo) {
     conditions.push(`(
-      (d.release_date IS NOT NULL AND d.release_date <= ?)
+      (d.release_date IS NOT NULL AND 
+        CASE 
+          WHEN d.release_date LIKE '____-__-__' THEN d.release_date
+          WHEN d.release_date LIKE '__/__/____' THEN 
+            substr(d.release_date, 7, 4) || '-' || substr(d.release_date, 1, 2) || '-' || substr(d.release_date, 4, 2)
+          ELSE d.release_date
+        END <= ?
+      )
       OR (d.commit_date IS NOT NULL AND d.commit_date <= ?)
     )`);
     params.push(filters.dateTo, filters.dateTo);

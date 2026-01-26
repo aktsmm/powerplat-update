@@ -130,6 +130,24 @@ function inferProduct(filePath: string, repoName: string): string {
 }
 
 /**
+ * 日付文字列を ISO 形式 (YYYY-MM-DD) に正規化
+ */
+function normalizeDateToISO(dateStr: string): string {
+  // MM/DD/YYYY 形式の場合
+  const mdyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdyMatch) {
+    const [, month, day, year] = mdyMatch;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+  // すでに YYYY-MM-DD 形式の場合はそのまま
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr;
+  }
+  // その他の形式はそのまま返す
+  return dateStr;
+}
+
+/**
  * Markdown ファイルのフロントマターを解析
  */
 function parseFrontmatter(content: string): {
@@ -158,7 +176,9 @@ function parseFrontmatter(content: string): {
   const dateMatch = frontmatter.match(
     /^(?:ms\.)?date:\s*(\d{1,2}\/\d{1,2}\/\d{4}|\d{4}-\d{2}-\d{2})/m,
   );
-  if (dateMatch) result.date = dateMatch[1];
+  if (dateMatch) {
+    result.date = normalizeDateToISO(dateMatch[1]);
+  }
 
   return result;
 }
@@ -206,21 +226,36 @@ export async function getWhatsNewFiles(token?: string): Promise<
     sha: string;
   }> = [];
 
+  logger.info("getWhatsNewFiles: Starting to fetch from repositories", {
+    repoCount: TARGET_REPOSITORIES.length,
+    hasToken: !!token,
+  });
+
   for (const repo of TARGET_REPOSITORIES) {
     try {
+      logger.info("getWhatsNewFiles: Fetching tree", {
+        repo: repo.repo,
+        basePath: repo.basePath,
+      });
       const tree = await getRepositoryTree(
         repo.owner,
         repo.repo,
         repo.branch,
         token,
       );
+      logger.info("getWhatsNewFiles: Got tree", {
+        repo: repo.repo,
+        itemCount: tree.length,
+      });
 
+      let matchCount = 0;
       for (const item of tree) {
         if (item.type !== "blob") continue;
         if (!item.path.endsWith(".md")) continue;
         if (!item.path.startsWith(repo.basePath)) continue;
         if (!isWhatsNewFile(item.path)) continue;
 
+        matchCount++;
         results.push({
           path: item.path,
           url: `https://github.com/${repo.owner}/${repo.repo}/blob/${repo.branch}/${item.path}`,
@@ -229,15 +264,19 @@ export async function getWhatsNewFiles(token?: string): Promise<
           sha: item.sha,
         });
       }
-    } catch (error) {
-      logger.warn("Failed to fetch repository", {
+      logger.info("getWhatsNewFiles: Found matches", {
         repo: repo.repo,
-        error: String(error),
+        matchCount,
+      });
+    } catch (error) {
+      logger.error("getWhatsNewFiles: Failed to fetch repository", {
+        repo: repo.repo,
+        error: error instanceof Error ? error.stack : String(error),
       });
     }
   }
 
-  logger.info("Found what's-new files", { count: results.length });
+  logger.info("getWhatsNewFiles: Complete", { totalCount: results.length });
   return results;
 }
 

@@ -15,6 +15,13 @@ tsconfig*.json
 temp-*
 **/*.map
 
+# Test and debug files
+test-*.mjs
+test-*.js
+debug-*.mjs
+debug-*.js
+check-*.js
+
 # Exclude node_modules except better-sqlite3 and dependencies
 node_modules/**
 !node_modules/better-sqlite3/**

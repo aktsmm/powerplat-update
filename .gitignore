@@ -5,6 +5,15 @@ dist/
 *.db-wal
 *.db-shm
 .DS_Store
+.vscode/
+
+# Test and debug files
+test-*.mjs
+test-*.js
+debug-*.mjs
+debug-*.js
+check-*.js
+
 # Temporary files
 temp-*.mjs
 temp-*.js

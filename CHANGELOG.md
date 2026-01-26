@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.5] - 2026-01-27
+
+### Fixed
+
+- Fixed date filter not working due to date format mismatch (MM/DD/YYYY → YYYY-MM-DD normalization)
+- Sync now correctly saves updates to database
+
+### Added
+
+- Support for D365 UPDATE extension's GitHub token as fallback (`d365Update.githubToken`)
+- Date normalization function for consistent ISO 8601 format
+
 ## [0.1.0] - 2026-01-26
 
 ### Added

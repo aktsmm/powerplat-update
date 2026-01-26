@@ -36,11 +36,12 @@ export async function executeSyncPowerPlatUpdates(
 ): Promise<string> {
   const db = getDatabase();
 
-  // Token: パラメータ > 環境変数 > なし
+  // Token: パラメータ > 環境変数 > D365トークン（共通利用）> なし
   const token =
     input.token ||
     process.env.GITHUB_TOKEN ||
-    process.env.POWERPLAT_UPDATE_GITHUB_TOKEN;
+    process.env.POWERPLAT_UPDATE_GITHUB_TOKEN ||
+    process.env.D365_UPDATE_GITHUB_TOKEN;
 
   // 同期実行
   const result = await syncFromGitHub(db, {

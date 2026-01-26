@@ -52,11 +52,12 @@ An MCP server for GitHub Copilot Chat that lets you search and retrieve Power Pl
 
 ## Settings
 
-| Setting                             | Description                   | Default |
-| ----------------------------------- | ----------------------------- | ------- |
-| `powerplatUpdate.githubToken`       | GitHub Personal Access Token  | (empty) |
-| `powerplatUpdate.autoSync`          | Automatically sync on startup | true    |
-| `powerplatUpdate.syncIntervalHours` | Sync interval (hours)         | 24      |
+| Setting                                 | Description                        | Default |
+| --------------------------------------- | ---------------------------------- | ------- |
+| `powerplatUpdate.githubToken`           | GitHub Personal Access Token       | (empty) |
+| `powerplatUpdate.autoSync`              | Automatically sync on startup      | true    |
+| `powerplatUpdate.syncIntervalHours`     | Sync interval (hours)              | 24      |
+| `powerplatUpdate.hideTokenNotification` | Hide the GitHub Token notification | false   |
 
 ## Development
 

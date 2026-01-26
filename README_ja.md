@@ -61,11 +61,12 @@ GitHub Copilot Chat で Power Platform のアップデート情報を検索で�
 
 ## 設定
 
-| 設定                                | 説明                         | デフォルト |
-| ----------------------------------- | ---------------------------- | ---------- |
-| `powerplatUpdate.githubToken`       | GitHub Personal Access Token | なし       |
-| `powerplatUpdate.autoSync`          | 起動時に自動同期             | true       |
-| `powerplatUpdate.syncIntervalHours` | 同期間隔（時間）             | 24         |
+| 設定                                    | 説明                         | デフォルト |
+| --------------------------------------- | ---------------------------- | ---------- |
+| `powerplatUpdate.githubToken`           | GitHub Personal Access Token | なし       |
+| `powerplatUpdate.autoSync`              | 起動時に自動同期             | true       |
+| `powerplatUpdate.syncIntervalHours`     | 同期間隔（時間）             | 24         |
+| `powerplatUpdate.hideTokenNotification` | Token 設定通知を非表示にする | false      |
 
 ## 開発
 
