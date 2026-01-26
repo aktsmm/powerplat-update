@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.8] - 2026-01-27
+
+### Fixed
+
+- Fixed server version mismatch (was showing 0.1.6 instead of actual version)
+
 ## [0.1.7] - 2026-01-27
 
 ### Added
