@@ -1,0 +1,18 @@
+node_modules/
+dist/
+*.vsix
+*.db
+*.db-wal
+*.db-shm
+.DS_Store
+# Temporary files
+temp-*.mjs
+temp-*.js
+sync-output.*
+*.tmp
+
+# Generated docs (local testing)
+docs/PowerPlatform_Updates_*.md
+
+# OS files
+Thumbs.db

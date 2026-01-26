@@ -1,0 +1,173 @@
+{
+  "name": "powerplat-update",
+  "displayName": "Power Platform UPDATE MCP",
+  "description": "Search and retrieve Power Platform update information from GitHub Docs via Copilot Chat",
+  "version": "0.1.0",
+  "publisher": "yamapan",
+  "license": "CC-BY-NC-4.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aktsmm/Ag-Ext-PowerPlat_UPDATE"
+  },
+  "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#742774",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Chat",
+    "AI"
+  ],
+  "keywords": [
+    "Microsoft",
+    "Power Platform",
+    "Power Apps",
+    "Power Automate",
+    "Power BI",
+    "Power Pages",
+    "Dataverse",
+    "Copilot Studio",
+    "Copilot",
+    "MCP",
+    "GitHub Copilot"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "powerplat-update.syncUpdates",
+        "title": "Power Platform UPDATE: Sync Updates from GitHub"
+      },
+      {
+        "command": "powerplat-update.openSettings",
+        "title": "Power Platform UPDATE: Open Settings"
+      },
+      {
+        "command": "powerplat-update.showVersion",
+        "title": "Power Platform UPDATE: Show Version Info"
+      }
+    ],
+    "configuration": {
+      "title": "Power Platform UPDATE",
+      "properties": {
+        "powerplatUpdate.githubToken": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "GitHub Personal Access Token (increases rate limit from 60 to 5,000 requests/hour). [Create a token here](https://github.com/settings/tokens/new?scopes=public_repo&description=PowerPlat%20UPDATE%20MCP) - **Important**: After creating, [Configure SSO](https://github.com/settings/tokens) and authorize for MicrosoftDocs. Token must expire within 90 days.",
+          "order": 1
+        },
+        "powerplatUpdate.autoSync": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically sync updates on startup",
+          "order": 2
+        },
+        "powerplatUpdate.syncIntervalHours": {
+          "type": "number",
+          "default": 24,
+          "description": "Hours between automatic sync (default: 24)",
+          "order": 3
+        },
+        "powerplatUpdate.hideTokenNotification": {
+          "type": "boolean",
+          "default": false,
+          "description": "Hide the GitHub Token setup notification",
+          "order": 4
+        }
+      }
+    },
+    "mcpServers": {
+      "powerplat-update": {
+        "command": "node",
+        "args": [
+          "${extensionPath}/dist/mcp/index.js"
+        ],
+        "env": {
+          "GITHUB_TOKEN": "${config:powerplatUpdate.githubToken}",
+          "POWERPLAT_UPDATE_GITHUB_TOKEN": "${config:powerplatUpdate.githubToken}"
+        }
+      }
+    },
+    "languageModelTools": [
+      {
+        "name": "powerplatupdate_search",
+        "displayName": "Power Platform Update Search",
+        "description": "Search for Power Platform update information from GitHub Docs. Use this when users ask about Power Apps, Power Automate, Power BI, Power Pages, Dataverse, Copilot Studio updates, new features, or what's new.",
+        "tags": [
+          "powerplatform",
+          "powerapps",
+          "powerautomate",
+          "powerbi",
+          "updates",
+          "whats-new"
+        ],
+        "modelDescription": "Search for Power Platform update information including Power Apps, Power Automate, Power BI, Power Pages, Dataverse, and Copilot Studio. Supports queries by product name, date range, and keywords. Returns update titles, descriptions, and URLs.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Search keywords or phrase"
+            },
+            "product": {
+              "type": "string",
+              "description": "Product name filter (e.g., Power Apps, Power Automate, Power BI, Power Pages)"
+            }
+          }
+        }
+      },
+      {
+        "name": "powerplatupdate_sync",
+        "displayName": "Power Platform Update Sync",
+        "description": "Sync Power Platform update data from GitHub repositories. Call this to refresh the local database.",
+        "tags": [
+          "powerplatform",
+          "sync"
+        ],
+        "modelDescription": "Synchronize Power Platform update data from GitHub repositories. Uses incremental sync to only fetch changed files.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "force": {
+              "type": "boolean",
+              "description": "Force full sync ignoring cache"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "npm run build:extension && npm run build:mcp",
+    "build:extension": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "build:mcp": "esbuild src/mcp/index.ts --bundle --outfile=dist/mcp/index.js --format=esm --platform=node --external:better-sqlite3 --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" && node scripts/copy-schema.mjs",
+    "watch": "tsc -watch -p ./",
+    "dev:mcp": "tsx src/mcp/index.ts",
+    "inspect": "npx @modelcontextprotocol/inspector tsx src/mcp/index.ts",
+    "lint": "eslint src --ext ts",
+    "test": "vitest run",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.0",
+    "better-sqlite3": "^12.5.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.15.2",
+    "@types/vscode": "^1.96.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.3",
+    "vitest": "^4.0.15",
+    "@vscode/vsce": "^3.2.0"
+  }
+}

@@ -1,0 +1,18 @@
+.vscode/**
+.github/**
+src/**
+scripts/**
+*.ts
+tsconfig*.json
+*.vsix
+*.db
+*.db-wal
+*.db-shm
+.gitignore
+
+# Exclude node_modules except better-sqlite3 and dependencies
+node_modules/**
+!node_modules/better-sqlite3/**
+!node_modules/bindings/**
+!node_modules/file-uri-to-path/**
+!node_modules/prebuild-install/**
