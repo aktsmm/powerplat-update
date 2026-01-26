@@ -25,7 +25,7 @@ import * as logger from "./utils/logger.js";
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "powerplat-update",
-    version: "0.1.6",
+    version: "0.1.7",
   });
 
   // search_powerplat_updates ツール
