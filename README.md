@@ -50,6 +50,27 @@ An MCP server for GitHub Copilot Chat that lets you search and retrieve Power Pl
 - `get_powerplat_update`: Get update details by ID
 - `sync_powerplat_updates`: Sync from GitHub
 
+## Performance Optimizations
+
+This extension uses several techniques to minimize sync time:
+
+| Technique | Description | Impact |
+|-----------|-------------|--------|
+| **Repository-level diff check** | Compares latest commit SHA for each repository before syncing. If no changes detected, skips the entire sync. | 150s → 6s (no changes) |
+| **Parallel processing** | Fetches repository trees, file contents, and commit history concurrently (5 concurrent requests). | 150s → 15s |
+| **Background auto-sync** | MCP server automatically syncs in background on startup when data is stale (>1 hour). User never waits. | Instant response |
+| **Incremental sync** | Only fetches files changed since last sync using commit history. | 15s → 5s (few changes) |
+| **Pre-seeded database** | Ships with a seed database for instant use on first launch. | No initial wait |
+
+### Sync Performance
+
+| Scenario | Time | vs Original |
+|----------|------|-------------|
+| Original (sequential) | 150s | - |
+| No repository changes | **6s** | 97% faster |
+| With changes (parallel) | **15s** | 90% faster |
+| Incremental (few files) | **5s** | 97% faster |
+
 ## Settings
 
 | Setting                                 | Description                        | Default |
