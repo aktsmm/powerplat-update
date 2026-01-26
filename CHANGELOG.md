@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.6] - 2026-01-27
+
+### Added
+
+- Pre-seeded database included in package for instant use without initial sync
+- Automatic seed database copy on first launch
+
 ## [0.1.5] - 2026-01-27
 
 ### Fixed

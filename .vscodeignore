@@ -9,6 +9,7 @@ out/**
 tsconfig*.json
 *.vsix
 *.db
+!resources/seed-database.db
 *.db-wal
 *.db-shm
 .gitignore

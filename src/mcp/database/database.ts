@@ -5,10 +5,11 @@
  */
 
 import Database from "better-sqlite3";
-import { readFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, existsSync, mkdirSync, copyFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { homedir } from "os";
+import * as logger from "../utils/logger.js";
 
 // ESM-friendly __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -37,12 +38,57 @@ function getDefaultDatabasePath(): string {
 }
 
 /**
+ * シードデータベースのパスを取得
+ */
+function getSeedDatabasePath(): string {
+  // esbuild バンドル後は __dirname = dist/mcp/ なので、../../resources/
+  return join(__dirname, "..", "..", "resources", "seed-database.db");
+}
+
+/**
+ * シードデータベースをコピー（DBが存在しない場合）
+ */
+function copySeedDatabaseIfNeeded(dbPath: string): boolean {
+  if (existsSync(dbPath)) {
+    return false; // 既存DBあり、コピー不要
+  }
+
+  const seedPath = getSeedDatabasePath();
+  if (!existsSync(seedPath)) {
+    logger.info("Seed database not found, will create empty database", {
+      seedPath,
+    });
+    return false;
+  }
+
+  try {
+    // ディレクトリ作成
+    const dataDir = dirname(dbPath);
+    if (!existsSync(dataDir)) {
+      mkdirSync(dataDir, { recursive: true });
+    }
+
+    copyFileSync(seedPath, dbPath);
+    logger.info("Copied seed database", { from: seedPath, to: dbPath });
+    return true;
+  } catch (error) {
+    logger.error("Failed to copy seed database", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return false;
+  }
+}
+
+/**
  * データベースを初期化
  */
 export function initializeDatabase(
   config: DatabaseConfig = {},
 ): Database.Database {
   const dbPath = config.path ?? getDefaultDatabasePath();
+
+  // シードデータベースをコピー（DBが存在しない場合）
+  copySeedDatabaseIfNeeded(dbPath);
 
   // ディレクトリ作成
   const dataDir = dirname(dbPath);
