@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.7] - 2026-01-27
+
+### Added
+
+- **Parallel processing**: Repository tree fetching, file processing, and commit retrieval now run in parallel (85% faster sync: 150s → 21s)
+- **Background sync**: Automatic sync triggers in background when data is stale (>1 hour), returns cached data immediately
+- **Incremental sync**: Only fetches changed files since last sync for faster subsequent updates
+
+### Performance
+
+- Full sync: 150s → 21s (86% improvement)
+- Incremental sync: 5-15s for subsequent updates
+- Search response: Immediate (no blocking on sync)
+
 ## [0.1.6] - 2026-01-27
 
 ### Added

@@ -2,11 +2,13 @@
  * search_powerplat_updates ツール
  *
  * Power Platform アップデート情報を検索
+ * バックグラウンド同期: データが古い場合は自動で裏で同期を開始
  */
 
 import { z } from "zod";
 import { getDatabase } from "../database/database.js";
 import { searchUpdates, getProducts } from "../database/queries.js";
+import { needsBackgroundSync, startBackgroundSync, isBackgroundSyncRunning } from "../services/sync.service.js";
 
 /**
  * GitHub ファイルパスから Microsoft Learn Docs URL を生成
@@ -99,6 +101,11 @@ export async function executeSearchPowerPlatUpdates(
   input: SearchPowerPlatUpdatesInput,
 ): Promise<string> {
   const db = getDatabase();
+
+  // バックグラウンド同期: データが古い場合（1時間以上）は裏で同期を開始
+  if (needsBackgroundSync(db, 1) && !isBackgroundSyncRunning()) {
+    startBackgroundSync(db);
+  }
 
   // 製品一覧を取得（フィルタのヒント用）
   const products = getProducts(db);
