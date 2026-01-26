@@ -12,3 +12,9 @@ All notable changes to this project will be documented in this file.
 - GitHub synchronization from MicrosoftDocs repositories
 - SQLite database with FTS5 full-text search
 - Japanese and English locale support for Microsoft Learn URLs
+
+## [0.1.1] - 2026-01-26
+
+### Changed
+
+- Updated extension icon to a Power Platform–distinct color scheme
