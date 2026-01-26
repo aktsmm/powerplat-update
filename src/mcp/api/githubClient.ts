@@ -255,10 +255,13 @@ export async function getWhatsNewFiles(token?: string): Promise<
     sha: string;
   }>
 > {
-  logger.info("getWhatsNewFiles: Starting to fetch from repositories (parallel)", {
-    repoCount: TARGET_REPOSITORIES.length,
-    hasToken: !!token,
-  });
+  logger.info(
+    "getWhatsNewFiles: Starting to fetch from repositories (parallel)",
+    {
+      repoCount: TARGET_REPOSITORIES.length,
+      hasToken: !!token,
+    },
+  );
 
   // 全リポジトリを並列で取得
   const repoResults = await Promise.all(
@@ -313,12 +316,14 @@ export async function getWhatsNewFiles(token?: string): Promise<
       }
 
       return files;
-    })
+    }),
   );
 
   // 結果をフラット化
   const results = repoResults.flat();
-  logger.info("getWhatsNewFiles: Complete (parallel)", { totalCount: results.length });
+  logger.info("getWhatsNewFiles: Complete (parallel)", {
+    totalCount: results.length,
+  });
   return results;
 }
 
@@ -472,7 +477,7 @@ export async function getRecentlyChangedFiles(
             } catch {
               return { commit, detail: { files: [] } };
             }
-          })
+          }),
         );
 
         for (const { commit, detail } of commitDetails) {
@@ -508,7 +513,7 @@ export async function getRecentlyChangedFiles(
       }
 
       return repoFiles;
-    })
+    }),
   );
 
   // 結果をマージ
@@ -521,7 +526,9 @@ export async function getRecentlyChangedFiles(
     }
   }
 
-  logger.info("Found recently changed files (parallel)", { count: changedFiles.size });
+  logger.info("Found recently changed files (parallel)", {
+    count: changedFiles.size,
+  });
   return changedFiles;
 }
 
@@ -573,7 +580,7 @@ export async function getRecentCommits(
       }
 
       return repoCommits;
-    })
+    }),
   );
 
   // 結果をフラット化
@@ -624,12 +631,16 @@ export async function getChangedFilesSince(
               return (await detailResponse.json()) as {
                 sha: string;
                 commit: { author: { date: string } };
-                files?: Array<{ filename: string; sha: string; status: string }>;
+                files?: Array<{
+                  filename: string;
+                  sha: string;
+                  status: string;
+                }>;
               };
             } catch {
               return null;
             }
-          })
+          }),
         );
 
         for (const detail of commitDetails) {
@@ -643,7 +654,10 @@ export async function getChangedFilesSince(
             // 最新のコミット情報を保持
             const existing = changedFilesMap.get(file.filename);
             const commitDate = detail.commit.author.date;
-            if (!existing || new Date(commitDate) > new Date(existing.commitDate)) {
+            if (
+              !existing ||
+              new Date(commitDate) > new Date(existing.commitDate)
+            ) {
               changedFilesMap.set(file.filename, {
                 path: file.filename,
                 rawUrl: `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${repo.branch}/${file.filename}`,
@@ -659,7 +673,7 @@ export async function getChangedFilesSince(
           error: String(error),
         });
       }
-    })
+    }),
   );
 
   const result = Array.from(changedFilesMap.values());

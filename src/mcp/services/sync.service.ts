@@ -47,13 +47,17 @@ export interface SyncOptions {
 /**
  * バックグラウンド同期が必要かチェック
  */
-export function needsBackgroundSync(db: Database.Database, staleHours: number = 1): boolean {
+export function needsBackgroundSync(
+  db: Database.Database,
+  staleHours: number = 1,
+): boolean {
   try {
     const checkpoint = getSyncCheckpoint(db);
     if (!checkpoint.lastSync) return true;
-    
+
     const lastSyncDate = new Date(checkpoint.lastSync);
-    const hoursSinceLastSync = (Date.now() - lastSyncDate.getTime()) / (1000 * 60 * 60);
+    const hoursSinceLastSync =
+      (Date.now() - lastSyncDate.getTime()) / (1000 * 60 * 60);
     return hoursSinceLastSync >= staleHours;
   } catch {
     return true;
@@ -63,7 +67,10 @@ export function needsBackgroundSync(db: Database.Database, staleHours: number = 
 /**
  * バックグラウンド同期を開始（非ブロッキング）
  */
-export function startBackgroundSync(db: Database.Database, options: SyncOptions = {}): void {
+export function startBackgroundSync(
+  db: Database.Database,
+  options: SyncOptions = {},
+): void {
   // すでに同期中なら何もしない
   if (backgroundSyncPromise && backgroundSyncDb === db) {
     logger.info("Background sync already in progress, skipping");
@@ -74,7 +81,9 @@ export function startBackgroundSync(db: Database.Database, options: SyncOptions 
   backgroundSyncDb = db;
   backgroundSyncPromise = syncFromGitHub(db, { ...options, incremental: true })
     .then((result) => {
-      logger.info("Background sync completed", { durationMs: result.durationMs });
+      logger.info("Background sync completed", {
+        durationMs: result.durationMs,
+      });
       return result;
     })
     .catch((error) => {
@@ -189,10 +198,12 @@ export async function syncFromGitHub(
     let errorCount = 0;
 
     // 各ファイルを並列処理（同時5件まで）
-    logger.info("Processing files (parallel)...", { count: filesToProcess.length });
-    
+    logger.info("Processing files (parallel)...", {
+      count: filesToProcess.length,
+    });
+
     const PARALLEL_LIMIT = 5;
-    const chunks: typeof filesToProcess[] = [];
+    const chunks: (typeof filesToProcess)[] = [];
     for (let i = 0; i < filesToProcess.length; i += PARALLEL_LIMIT) {
       chunks.push(filesToProcess.slice(i, i + PARALLEL_LIMIT));
     }
@@ -219,7 +230,7 @@ export async function syncFromGitHub(
             });
             return { success: false, update: null, path: file.path };
           }
-        })
+        }),
       );
 
       // データベースに保存（直列で行う）
@@ -236,7 +247,10 @@ export async function syncFromGitHub(
         }
       }
     }
-    logger.info("File processing complete (parallel)", { updatesCount, errorCount });
+    logger.info("File processing complete (parallel)", {
+      updatesCount,
+      errorCount,
+    });
 
     // コミット履歴を取得
     const since = force ? undefined : checkpoint.lastSync;
@@ -335,7 +349,9 @@ async function incrementalSync(
 
     // 前回同期以降に変更されたファイルを取得
     const changedFiles = await getChangedFilesSince(lastSync, token);
-    logger.info("Found changed files since last sync", { count: changedFiles.length });
+    logger.info("Found changed files since last sync", {
+      count: changedFiles.length,
+    });
 
     if (changedFiles.length === 0) {
       const durationMs = Date.now() - startTime;
@@ -358,7 +374,7 @@ async function incrementalSync(
 
     // 変更されたファイルを並列処理
     const PARALLEL_LIMIT = 5;
-    const chunks: typeof changedFiles[] = [];
+    const chunks: (typeof changedFiles)[] = [];
     for (let i = 0; i < changedFiles.length; i += PARALLEL_LIMIT) {
       chunks.push(changedFiles.slice(i, i + PARALLEL_LIMIT));
     }
@@ -384,7 +400,7 @@ async function incrementalSync(
             });
             return { success: false, update: null, path: file.path };
           }
-        })
+        }),
       );
 
       for (const result of results) {

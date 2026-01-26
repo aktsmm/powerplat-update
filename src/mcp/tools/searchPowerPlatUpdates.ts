@@ -8,7 +8,11 @@
 import { z } from "zod";
 import { getDatabase } from "../database/database.js";
 import { searchUpdates, getProducts } from "../database/queries.js";
-import { needsBackgroundSync, startBackgroundSync, isBackgroundSyncRunning } from "../services/sync.service.js";
+import {
+  needsBackgroundSync,
+  startBackgroundSync,
+  isBackgroundSyncRunning,
+} from "../services/sync.service.js";
 
 /**
  * GitHub ファイルパスから Microsoft Learn Docs URL を生成
