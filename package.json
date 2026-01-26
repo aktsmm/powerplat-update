@@ -1,13 +1,13 @@
 {
   "name": "powerplat-update",
-  "displayName": "Power Platform UPDATE MCP",
+  "displayName": "PowerPlat UPDATE MCP",
   "description": "Search and retrieve Power Platform update information from GitHub Docs via Copilot Chat",
   "version": "0.1.0",
   "publisher": "yamapan",
   "license": "CC-BY-NC-4.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aktsmm/Ag-Ext-PowerPlat_UPDATE"
+    "url": "https://github.com/aktsmm/powerplat-update"
   },
   "icon": "resources/icon.png",
   "galleryBanner": {
