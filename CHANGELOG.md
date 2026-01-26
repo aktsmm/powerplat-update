@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.10] - 2026-01-27
+
+### Documentation
+
+- Added Performance Optimizations section to README (English and Japanese)
+- Documented all sync optimization techniques and their impact
+
 ## [0.1.9] - 2026-01-27
 
 ### Added
