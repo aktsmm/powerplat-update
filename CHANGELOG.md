@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.11] - 2026-01-28
+
+### Changed
+
+- Improved README table formatting for better readability
+- Removed development prompts from package (.github/prompts)
+
 ## [0.1.10] - 2026-01-27
 
 ### Documentation

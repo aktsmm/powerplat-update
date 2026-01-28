@@ -2,7 +2,7 @@
   "name": "powerplat-update",
   "displayName": "PowerPlat UPDATE MCP",
   "description": "Search and retrieve Power Platform update information from GitHub Docs via Copilot Chat",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "publisher": "yamapan",
   "license": "CC-BY-NC-SA-4.0",
   "repository": {
