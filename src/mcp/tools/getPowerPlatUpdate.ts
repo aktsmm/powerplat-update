@@ -91,7 +91,7 @@ function convertToDocsUrl(fileUrl: string, locale: string): string | null {
 export async function executeGetPowerPlatUpdate(
   input: GetPowerPlatUpdateInput,
 ): Promise<string> {
-  const db = getDatabase();
+  const db = await getDatabase();
 
   const update = getUpdateById(db, input.id);
 

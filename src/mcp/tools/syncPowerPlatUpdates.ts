@@ -34,7 +34,7 @@ export type SyncPowerPlatUpdatesInput = z.infer<
 export async function executeSyncPowerPlatUpdates(
   input: SyncPowerPlatUpdatesInput,
 ): Promise<string> {
-  const db = getDatabase();
+  const db = await getDatabase();
 
   // Token: パラメータ > 環境変数 > D365トークン（共通利用）> なし
   const token =

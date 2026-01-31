@@ -146,9 +146,10 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
-    "build": "npm run build:extension && npm run build:mcp",
+    "build": "npm run build:extension && npm run build:mcp && npm run copy:wasm",
     "build:extension": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
-    "build:mcp": "esbuild src/mcp/index.ts --bundle --outfile=dist/mcp/index.js --format=esm --platform=node --external:better-sqlite3 --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" && node scripts/copy-schema.mjs",
+    "build:mcp": "esbuild src/mcp/index.ts --bundle --outfile=dist/mcp/index.js --format=esm --platform=node --loader:.wasm=file --banner:js=\"import { createRequire } from 'module'; import { fileURLToPath as __fileURLToPath } from 'url'; import { dirname as __pathDirname } from 'path'; const require = createRequire(import.meta.url); const __filename = __fileURLToPath(import.meta.url); const __dirname = __pathDirname(__filename);\" && node scripts/copy-schema.mjs",
+    "copy:wasm": "node -e \"require('fs').copyFileSync('node_modules/sql.js/dist/sql-wasm.wasm', 'dist/mcp/sql-wasm.wasm')\"",
     "watch": "tsc -watch -p ./",
     "dev:mcp": "tsx src/mcp/index.ts",
     "inspect": "npx @modelcontextprotocol/inspector tsx src/mcp/index.ts",
@@ -158,12 +159,12 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.0",
-    "better-sqlite3": "^12.5.0",
+    "sql.js": "^1.11.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.15.2",
+    "@types/sql.js": "^1.4.9",
     "@types/vscode": "^1.96.0",
     "esbuild": "^0.25.0",
     "tsx": "^4.21.0",

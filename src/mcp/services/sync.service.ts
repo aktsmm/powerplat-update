@@ -6,9 +6,10 @@
  * バックグラウンド同期: 検索時に非同期で同期を実行
  */
 
-import type Database from "better-sqlite3";
+import type { Database as SqlJsDatabase } from "sql.js";
 import type { SyncResult } from "../types.js";
 import { TARGET_REPOSITORIES } from "../types.js";
+import { saveDatabase } from "../database/database.js";
 import {
   getWhatsNewFiles,
   fetchAndParseFile,
@@ -31,7 +32,7 @@ import * as logger from "../utils/logger.js";
 
 /** バックグラウンド同期の状態 */
 let backgroundSyncPromise: Promise<SyncResult> | null = null;
-let backgroundSyncDb: Database.Database | null = null;
+let backgroundSyncDb: SqlJsDatabase | null = null;
 
 /**
  * 同期オプション
@@ -51,7 +52,7 @@ export interface SyncOptions {
  * バックグラウンド同期が必要かチェック
  */
 export function needsBackgroundSync(
-  db: Database.Database,
+  db: SqlJsDatabase,
   staleHours: number = 1,
 ): boolean {
   try {
@@ -71,7 +72,7 @@ export function needsBackgroundSync(
  * バックグラウンド同期を開始（非ブロッキング）
  */
 export function startBackgroundSync(
-  db: Database.Database,
+  db: SqlJsDatabase,
   options: SyncOptions = {},
 ): void {
   // すでに同期中なら何もしない
@@ -128,7 +129,7 @@ function getRepoNameFromPath(filePath: string): string {
  * 同期実行
  */
 export async function syncFromGitHub(
-  db: Database.Database,
+  db: SqlJsDatabase,
   options: SyncOptions = {},
 ): Promise<SyncResult> {
   const startTime = Date.now();
@@ -340,6 +341,9 @@ export async function syncFromGitHub(
       lastError: errorCount > 0 ? `${errorCount} files failed` : null,
     });
 
+    // sql.js はインメモリDBなので明示的に保存
+    saveDatabase();
+
     logger.info("Sync completed", {
       updatesCount,
       commitsCount,
@@ -379,7 +383,7 @@ export async function syncFromGitHub(
  * 前回同期以降に変更されたファイルのみを取得・更新
  */
 async function incrementalSync(
-  db: Database.Database,
+  db: SqlJsDatabase,
   lastSync: string,
   token?: string,
 ): Promise<SyncResult> {
@@ -462,6 +466,9 @@ async function incrementalSync(
       lastSyncDurationMs: durationMs,
       lastError: errorCount > 0 ? `${errorCount} files failed` : null,
     });
+
+    // sql.js はインメモリDBなので明示的に保存
+    saveDatabase();
 
     logger.info("Incremental sync completed", {
       updatesCount,

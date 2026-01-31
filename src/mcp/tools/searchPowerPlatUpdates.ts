@@ -104,7 +104,7 @@ export type SearchPowerPlatUpdatesInput = z.infer<
 export async function executeSearchPowerPlatUpdates(
   input: SearchPowerPlatUpdatesInput,
 ): Promise<string> {
-  const db = getDatabase();
+  const db = await getDatabase();
 
   // バックグラウンド同期: データが古い場合（1時間以上）は裏で同期を開始
   if (needsBackgroundSync(db, 1) && !isBackgroundSyncRunning()) {

@@ -25,7 +25,7 @@ async function main(): Promise<void> {
   // データベース初期化
   let db;
   try {
-    db = getDatabase();
+    db = await getDatabase();
     logger.info("Database initialized");
   } catch (error) {
     logger.error("Failed to initialize database", { error: String(error) });
