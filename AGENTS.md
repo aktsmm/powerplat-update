@@ -1,10 +1,6 @@
 <!-- skill-ninja-START -->
-## Installed Skills
+## Agent Skills
 
-The following skills are available in this workspace.
-
-| Skill | When to Use |
-|-------|-------------|
-| [code-simplifier](.github/skills/code-simplifier/SKILL.md) | After completing a coding task or writing a logical chunk of code |
+No skills installed yet. Use "Agent Skills Ninja: Search Skills" to install skills.
 
 <!-- skill-ninja-END -->
