@@ -7,8 +7,6 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 
-// バージョン情報
-const VERSION = "0.1.0";
 const EXTENSION_NAME = "Power Platform UPDATE MCP";
 const MCP_SERVER_NAME = "powerplat-update";
 
@@ -142,7 +140,11 @@ async function registerMcpServer(
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  console.log(`${EXTENSION_NAME} v${VERSION} activated`);
+  const extensionVersion =
+    (context.extension.packageJSON as { version?: string })?.version ??
+    "unknown";
+
+  console.log(`${EXTENSION_NAME} v${extensionVersion} activated`);
   console.log("Extension path:", context.extensionPath);
 
   // MCP サーバーを mcp.json に登録
@@ -194,7 +196,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       vscode.window.showInformationMessage(
-        "Power Platform UPDATE: Syncing updates... Use 'sync_powerplat_updates' in Copilot Chat.",
+        "Power Platform UPDATE: 同期を開始... Copilot Chat で 'sync_powerplat_updates' を使用してください。",
       );
     },
   );
@@ -221,7 +223,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
       vscode.window
         .showInformationMessage(
-          `${EXTENSION_NAME} v${VERSION}\n` +
+          `${EXTENSION_NAME} v${extensionVersion}\n` +
             `GitHub Token: ${hasToken ? "✓ 設定済み" : "✗ 未設定"}\n` +
             `Auto Sync: ${autoSync ? "有効" : "無効"} (${syncInterval}時間ごと)`,
           "設定を開く",

@@ -7,6 +7,7 @@
 import { z } from "zod";
 import { getDatabase } from "../database/database.js";
 import { getUpdateById } from "../database/queries.js";
+import { convertToDocsUrl, generateReferenceUrls } from "../utils/url.js";
 
 /**
  * ツール入力スキーマ
@@ -24,66 +25,6 @@ export const getPowerPlatUpdateSchema = z.object({
 });
 
 export type GetPowerPlatUpdateInput = z.infer<typeof getPowerPlatUpdateSchema>;
-
-/**
- * 参考 URL を生成
- */
-function generateReferenceUrls(
-  product: string,
-  locale: string,
-): {
-  learnSearchUrl: string;
-  productDocsUrl: string;
-} {
-  // 製品名からドキュメントパスを推測
-  const productPath = product.toLowerCase().includes("power apps")
-    ? "power-apps"
-    : product.toLowerCase().includes("power automate")
-      ? "power-automate"
-      : product.toLowerCase().includes("power bi")
-        ? "power-bi"
-        : product.toLowerCase().includes("power pages")
-          ? "power-pages"
-          : product.toLowerCase().includes("copilot studio")
-            ? "microsoft-copilot-studio"
-            : product.toLowerCase().includes("ai builder")
-              ? "ai-builder"
-              : "power-platform";
-
-  const searchTerms = encodeURIComponent(`${product} what's new`);
-
-  return {
-    learnSearchUrl: `https://learn.microsoft.com/${locale}/search/?terms=${searchTerms}`,
-    productDocsUrl: `https://learn.microsoft.com/${locale}/${productPath}/`,
-  };
-}
-
-/**
- * GitHub ファイルパスから Microsoft Learn Docs URL を生成
- */
-function convertToDocsUrl(fileUrl: string, locale: string): string | null {
-  const match = fileUrl.match(
-    /github\.com\/MicrosoftDocs\/([^/]+)\/blob\/main\/([^/]+)\/(.+)\.md$/,
-  );
-  if (!match) return null;
-
-  const [, repo, , path] = match;
-
-  const repoToDocsBase: Record<string, string> = {
-    "power-platform": "power-platform",
-    "powerapps-docs": "power-apps",
-    "power-automate-docs": "power-automate",
-    "powerbi-docs": "power-bi",
-    "power-pages-docs": "power-pages",
-    "power-virtual-agents": "microsoft-copilot-studio",
-    "ai-builder": "ai-builder",
-  };
-
-  const docsBase = repoToDocsBase[repo];
-  if (!docsBase) return null;
-
-  return `https://learn.microsoft.com/${locale}/${docsBase}/${path}`;
-}
 
 /**
  * ツール実行

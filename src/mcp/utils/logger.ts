@@ -1,5 +1,8 @@
 /**
  * ロガーユーティリティ
+ *
+ * MCP サーバーでは stdout がツール出力用に予約されているため、
+ * ログは stderr (console.error) に出力する。
  */
 
 export type LogLevel = "debug" | "info" | "warn" | "error";

@@ -158,9 +158,9 @@ export function updateCommitDate(
     `
     UPDATE powerplat_updates
     SET commit_date = ?, commit_sha = ?, updated_at = datetime('now')
-    WHERE file_path LIKE ?
+    WHERE file_path = ?
   `,
-    [commitDate, commitSha, `%${filePath}`],
+    [commitDate, commitSha, filePath],
   );
 }
 
@@ -176,9 +176,9 @@ export function updateFirstCommitDate(
     `
     UPDATE powerplat_updates
     SET first_commit_date = ?, updated_at = datetime('now')
-    WHERE file_path LIKE ? AND first_commit_date IS NULL
+    WHERE file_path = ? AND first_commit_date IS NULL
   `,
-    [firstCommitDate, `%${filePath}`],
+    [firstCommitDate, filePath],
   );
 }
 
@@ -255,11 +255,19 @@ export function searchUpdates(
 
   const conditions: string[] = [];
   const params: (string | number)[] = [];
+  const normalizedQuery = filters.query?.trim();
+  let hasWhereClause = false;
+  const hasFtsTable = (() => {
+    const result = db.exec(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='powerplat_updates_fts'",
+    );
+    return result.length > 0 && result[0].values.length > 0;
+  })();
 
-  // 全文検索（sql.js では FTS5 が限定的なので LIKE で代替も考慮）
-  if (filters.query) {
-    // FTS5 テーブルが存在する場合は使用
-    try {
+  // 全文検索（FTSテーブルがない場合はLIKEへフォールバック）
+  if (normalizedQuery) {
+    if (hasFtsTable) {
+      const escapedQuery = normalizedQuery.replace(/"/g, '""');
       sql = `
         SELECT
           d.id, d.file_path as filePath, d.title, d.description,
@@ -271,11 +279,11 @@ export function searchUpdates(
         JOIN powerplat_updates_fts fts ON d.id = fts.rowid
         WHERE powerplat_updates_fts MATCH ?
       `;
-      params.push(filters.query);
-    } catch {
-      // FTS5 が無い場合は LIKE 検索にフォールバック
+      hasWhereClause = true;
+      params.push(`"${escapedQuery}"`);
+    } else {
       conditions.push("(d.title LIKE ? OR d.description LIKE ?)");
-      params.push(`%${filters.query}%`, `%${filters.query}%`);
+      params.push(`%${normalizedQuery}%`, `%${normalizedQuery}%`);
     }
   }
 
@@ -316,7 +324,7 @@ export function searchUpdates(
   }
 
   if (conditions.length > 0) {
-    sql += (filters.query ? " AND " : " WHERE ") + conditions.join(" AND ");
+    sql += (hasWhereClause ? " AND " : " WHERE ") + conditions.join(" AND ");
   }
 
   // ソート
@@ -326,6 +334,9 @@ export function searchUpdates(
   if (filters.limit !== undefined) {
     sql += " LIMIT ?";
     params.push(filters.limit);
+  } else if (filters.offset !== undefined && filters.offset > 0) {
+    // SQLite は OFFSET 単独構文を許容しないため、LIMIT -1 を付与
+    sql += " LIMIT -1";
   }
   if (filters.offset !== undefined && filters.offset > 0) {
     sql += " OFFSET ?";

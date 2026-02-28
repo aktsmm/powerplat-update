@@ -13,38 +13,7 @@ import {
   startBackgroundSync,
   isBackgroundSyncRunning,
 } from "../services/sync.service.js";
-
-/**
- * GitHub ファイルパスから Microsoft Learn Docs URL を生成
- * @param fileUrl - GitHub のファイル URL
- * @param locale - ロケール (例: 'ja-jp', 'en-us')
- * @returns Microsoft Learn の URL
- */
-function convertToDocsUrl(fileUrl: string, locale: string): string | null {
-  // GitHub URL パターンから Learn URL を生成
-  const match = fileUrl.match(
-    /github\.com\/MicrosoftDocs\/([^/]+)\/blob\/main\/([^/]+)\/(.+)\.md$/,
-  );
-  if (!match) return null;
-
-  const [, repo, basePath, path] = match;
-
-  // リポジトリ別のドキュメントベース URL マッピング
-  const repoToDocsBase: Record<string, string> = {
-    "power-platform": "power-platform",
-    "powerapps-docs": "power-apps",
-    "power-automate-docs": "power-automate",
-    "powerbi-docs": "power-bi",
-    "power-pages-docs": "power-pages",
-    "power-virtual-agents": "microsoft-copilot-studio",
-    "ai-builder": "ai-builder",
-  };
-
-  const docsBase = repoToDocsBase[repo];
-  if (!docsBase) return null;
-
-  return `https://learn.microsoft.com/${locale}/${docsBase}/${path}`;
-}
+import { convertToDocsUrl } from "../utils/url.js";
 
 /**
  * ツール入力スキーマ

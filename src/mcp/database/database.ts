@@ -255,14 +255,40 @@ function applySchema(db: SqlJsDatabase): void {
 export function migrateSchema(db: SqlJsDatabase): boolean {
   let migrated = false;
 
+  // 旧バージョンDBで FTS テーブルが欠けている場合、schema.sql を再適用
+  const ftsTableResult = db.exec(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='powerplat_updates_fts'",
+  );
+  const hasFtsTable =
+    ftsTableResult.length > 0 && ftsTableResult[0].values.length > 0;
+  if (!hasFtsTable) {
+    try {
+      applySchema(db);
+      db.run(
+        "INSERT INTO powerplat_updates_fts(powerplat_updates_fts) VALUES('rebuild')",
+      );
+      migrated = true;
+    } catch (error) {
+      logger.warn("Failed to migrate FTS schema; falling back to LIKE search", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   // first_commit_date カラムが存在するか確認
   const columnsResult = db.exec("PRAGMA table_info(powerplat_updates)");
   const columns = columnsResult.length > 0 ? columnsResult[0].values : [];
   const columnNames = columns.map((row) => row[1] as string);
 
   if (!columnNames.includes("first_commit_date")) {
-    db.run("ALTER TABLE powerplat_updates ADD COLUMN first_commit_date TEXT");
-    migrated = true;
+    try {
+      db.run("ALTER TABLE powerplat_updates ADD COLUMN first_commit_date TEXT");
+      migrated = true;
+    } catch (error) {
+      logger.warn("Failed to add first_commit_date column", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   // repo_sha テーブルが存在するか確認（v0.1.9で追加）
@@ -273,14 +299,20 @@ export function migrateSchema(db: SqlJsDatabase): boolean {
     tableResult.length > 0 && tableResult[0].values.length > 0;
 
   if (!hasRepoShaTable) {
-    db.run(`
-      CREATE TABLE IF NOT EXISTS repo_sha (
-        repo TEXT PRIMARY KEY,
-        latest_sha TEXT NOT NULL,
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )
-    `);
-    migrated = true;
+    try {
+      db.run(`
+        CREATE TABLE IF NOT EXISTS repo_sha (
+          repo TEXT PRIMARY KEY,
+          latest_sha TEXT NOT NULL,
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `);
+      migrated = true;
+    } catch (error) {
+      logger.warn("Failed to create repo_sha table", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   return migrated;

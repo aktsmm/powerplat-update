@@ -17,43 +17,7 @@ import * as logger from "../utils/logger.js";
 /** リトライ設定 */
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
-
-/** 並列処理の同時実行数 */
-const CONCURRENCY_LIMIT = 5;
-
-/**
- * 同時接続数を制限した並列処理
- */
-async function parallelWithLimit<T, R>(
-  items: T[],
-  fn: (item: T) => Promise<R>,
-  limit: number = CONCURRENCY_LIMIT,
-): Promise<R[]> {
-  const results: R[] = [];
-  const executing: Promise<void>[] = [];
-
-  for (const item of items) {
-    const promise = fn(item).then((result) => {
-      results.push(result);
-    });
-    executing.push(promise as unknown as Promise<void>);
-
-    if (executing.length >= limit) {
-      await Promise.race(executing);
-      // 完了したPromiseを除去
-      const completed = executing.findIndex(
-        (p) => (p as unknown as Promise<void> & { settled?: boolean }).settled,
-      );
-      if (completed === -1) {
-        await Promise.all(executing);
-        executing.length = 0;
-      }
-    }
-  }
-
-  await Promise.all(executing);
-  return results;
-}
+const GITHUB_USER_AGENT = "PowerPlat-Update-MCP-Server";
 
 /**
  * GitHub API fetch with auth
@@ -61,14 +25,12 @@ async function parallelWithLimit<T, R>(
 async function githubFetch(url: string, token?: string): Promise<Response> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",
-    "User-Agent": "PowerPlat-Update-MCP-Server/0.1.0",
+    "User-Agent": GITHUB_USER_AGENT,
   };
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
-    logger.info("Using GitHub token for API request", {
-      tokenPrefix: token.substring(0, 10),
-    });
+    logger.info("Using GitHub token for API request");
   } else {
     logger.warn(
       "No GitHub token provided, using unauthenticated request (60/hour limit)",
@@ -259,9 +221,9 @@ export async function getAllRepositoryLatestShas(
   await Promise.all(
     TARGET_REPOSITORIES.map(async (repoConfig) => {
       const sha = await getRepositoryLatestSha(
-        "MicrosoftDocs",
+        repoConfig.owner,
         repoConfig.repo,
-        "main",
+        repoConfig.branch,
         token,
       );
       if (sha) {
@@ -302,6 +264,7 @@ export async function getRepositoryTree(
  */
 export async function getWhatsNewFiles(token?: string): Promise<
   Array<{
+    repo: string;
     path: string;
     url: string;
     rawUrl: string;
@@ -321,6 +284,7 @@ export async function getWhatsNewFiles(token?: string): Promise<
   const repoResults = await Promise.all(
     TARGET_REPOSITORIES.map(async (repo) => {
       const files: Array<{
+        repo: string;
         path: string;
         url: string;
         rawUrl: string;
@@ -351,6 +315,7 @@ export async function getWhatsNewFiles(token?: string): Promise<
           if (!isWhatsNewFile(item.path)) continue;
 
           files.push({
+            repo: repo.repo,
             path: item.path,
             url: `https://github.com/${repo.owner}/${repo.repo}/blob/${repo.branch}/${item.path}`,
             rawUrl: `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${repo.branch}/${item.path}`,
@@ -410,56 +375,6 @@ export async function fetchAndParseFile(
       .replace("/main/", "/blob/main/"),
     rawContentUrl: rawUrl,
   };
-}
-
-/**
- * ファイルの初回コミット日を取得
- */
-export async function getFileFirstCommitDate(
-  owner: string,
-  repo: string,
-  filePath: string,
-  token?: string,
-): Promise<{ date: string; sha: string } | null> {
-  // per_page=1 で最後のページを取得することで初回コミットを取得
-  const url = `https://api.github.com/repos/${owner}/${repo}/commits?path=${filePath}&per_page=1`;
-
-  try {
-    const response = await githubFetch(url, token);
-
-    // Link ヘッダーから最後のページを取得
-    const linkHeader = response.headers.get("Link");
-    if (linkHeader) {
-      const lastMatch = linkHeader.match(/<([^>]+)>;\s*rel="last"/);
-      if (lastMatch) {
-        // 最後のページを取得
-        const lastResponse = await githubFetch(lastMatch[1], token);
-        const lastData = (await lastResponse.json()) as GitHubCommit[];
-        if (lastData.length > 0) {
-          return {
-            date: lastData[lastData.length - 1].commit.author.date,
-            sha: lastData[lastData.length - 1].sha,
-          };
-        }
-      }
-    }
-
-    // ページネーションがない場合（コミットが1つだけ）
-    const data = (await response.json()) as GitHubCommit[];
-    if (data.length > 0) {
-      return {
-        date: data[0].commit.author.date,
-        sha: data[0].sha,
-      };
-    }
-  } catch (error) {
-    logger.warn("Failed to get file first commit date", {
-      filePath,
-      error: String(error),
-    });
-  }
-
-  return null;
 }
 
 /**
@@ -652,6 +567,7 @@ export async function getChangedFilesSince(
   token?: string,
 ): Promise<
   Array<{
+    repo: string;
     path: string;
     rawUrl: string;
     sha: string;
@@ -662,7 +578,13 @@ export async function getChangedFilesSince(
 
   const changedFilesMap = new Map<
     string,
-    { path: string; rawUrl: string; sha: string; commitDate: string }
+    {
+      repo: string;
+      path: string;
+      rawUrl: string;
+      sha: string;
+      commitDate: string;
+    }
   >();
 
   // 全リポジトリを並列で取得
@@ -706,13 +628,15 @@ export async function getChangedFilesSince(
             if (!file.filename.startsWith(repo.basePath)) continue;
 
             // 最新のコミット情報を保持
-            const existing = changedFilesMap.get(file.filename);
+            const fileKey = `${repo.repo}:${file.filename}`;
+            const existing = changedFilesMap.get(fileKey);
             const commitDate = detail.commit.author.date;
             if (
               !existing ||
               new Date(commitDate) > new Date(existing.commitDate)
             ) {
-              changedFilesMap.set(file.filename, {
+              changedFilesMap.set(fileKey, {
+                repo: repo.repo,
                 path: file.filename,
                 rawUrl: `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${repo.branch}/${file.filename}`,
                 sha: file.sha,

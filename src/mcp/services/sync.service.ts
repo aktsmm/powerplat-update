@@ -8,7 +8,6 @@
 
 import type { Database as SqlJsDatabase } from "sql.js";
 import type { SyncResult } from "../types.js";
-import { TARGET_REPOSITORIES } from "../types.js";
 import { saveDatabase } from "../database/database.js";
 import {
   getWhatsNewFiles,
@@ -111,18 +110,6 @@ export function startBackgroundSync(
  */
 export function isBackgroundSyncRunning(): boolean {
   return backgroundSyncPromise !== null;
-}
-
-/**
- * ファイルパスからリポジトリ名を取得
- */
-function getRepoNameFromPath(filePath: string): string {
-  for (const repo of TARGET_REPOSITORIES) {
-    if (filePath.startsWith(repo.basePath)) {
-      return repo.repo;
-    }
-  }
-  return "power-platform";
 }
 
 /**
@@ -254,11 +241,10 @@ export async function syncFromGitHub(
       const results = await Promise.all(
         chunk.map(async (file) => {
           try {
-            const repoName = getRepoNameFromPath(file.path);
             const update = await fetchAndParseFile(
               file.rawUrl,
               file.path,
-              repoName,
+              file.repo,
               token,
             );
             // SHA を保存
@@ -428,11 +414,10 @@ async function incrementalSync(
       const results = await Promise.all(
         chunk.map(async (file) => {
           try {
-            const repoName = getRepoNameFromPath(file.path);
             const update = await fetchAndParseFile(
               file.rawUrl,
               file.path,
-              repoName,
+              file.repo,
               token,
             );
             update.commitSha = file.sha;
