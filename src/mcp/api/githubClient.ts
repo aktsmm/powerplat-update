@@ -19,6 +19,18 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 const GITHUB_USER_AGENT = "PowerPlat-Update-MCP-Server";
 
+function convertRawToBlobUrl(rawUrl: string): string {
+  const match = rawUrl.match(
+    /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/,
+  );
+  if (!match) {
+    return rawUrl;
+  }
+
+  const [, owner, repo, branch, path] = match;
+  return `https://github.com/${owner}/${repo}/blob/${branch}/${path}`;
+}
+
 /**
  * GitHub API fetch with auth
  */
@@ -213,6 +225,7 @@ export async function getAllRepositoryLatestShas(
   token?: string,
 ): Promise<Map<string, string>> {
   const results = new Map<string, string>();
+  const failedRepos: string[] = [];
 
   logger.info("Fetching latest SHAs for all repositories (parallel)", {
     repoCount: TARGET_REPOSITORIES.length,
@@ -228,9 +241,17 @@ export async function getAllRepositoryLatestShas(
       );
       if (sha) {
         results.set(repoConfig.repo, sha);
+      } else {
+        failedRepos.push(repoConfig.repo);
       }
     }),
   );
+
+  if (failedRepos.length > 0) {
+    throw new Error(
+      `Failed to fetch latest SHA for repos: ${failedRepos.join(", ")}`,
+    );
+  }
 
   logger.info("Fetched latest SHAs", { count: results.size });
   return results;
@@ -253,7 +274,9 @@ export async function getRepositoryTree(
   const data = (await response.json()) as GitHubTreeResponse;
 
   if (data.truncated) {
-    logger.warn("Repository tree was truncated", { owner, repo });
+    throw new Error(
+      `Repository tree was truncated for ${owner}/${repo}; aborting to avoid incomplete sync`,
+    );
   }
 
   return data.tree;
@@ -272,6 +295,8 @@ export async function getWhatsNewFiles(token?: string): Promise<
     sha: string;
   }>
 > {
+  const failedRepos: string[] = [];
+
   logger.info(
     "getWhatsNewFiles: Starting to fetch from repositories (parallel)",
     {
@@ -332,6 +357,7 @@ export async function getWhatsNewFiles(token?: string): Promise<
           repo: repo.repo,
           error: error instanceof Error ? error.stack : String(error),
         });
+        failedRepos.push(repo.repo);
       }
 
       return files;
@@ -340,6 +366,13 @@ export async function getWhatsNewFiles(token?: string): Promise<
 
   // 結果をフラット化
   const results = repoResults.flat();
+
+  if (failedRepos.length > 0) {
+    throw new Error(
+      `Failed to fetch repository trees: ${failedRepos.join(", ")}`,
+    );
+  }
+
   logger.info("getWhatsNewFiles: Complete (parallel)", {
     totalCount: results.length,
   });
@@ -370,9 +403,7 @@ export async function fetchAndParseFile(
     commitSha: null,
     commitDate: null,
     firstCommitDate: null,
-    fileUrl: rawUrl
-      .replace("raw.githubusercontent.com", "github.com")
-      .replace("/main/", "/blob/main/"),
+    fileUrl: convertRawToBlobUrl(rawUrl),
     rawContentUrl: rawUrl,
   };
 }
@@ -452,6 +483,9 @@ export async function getRecentlyChangedFiles(
         for (const { commit, detail } of commitDetails) {
           if (detail.files) {
             for (const file of detail.files) {
+              if (file.status === "removed") {
+                continue;
+              }
               if (
                 isWhatsNewFile(file.filename) &&
                 file.filename.endsWith(".md")
@@ -576,6 +610,8 @@ export async function getChangedFilesSince(
 > {
   logger.info("Getting changed files since", { since });
 
+  const failedRepos: string[] = [];
+
   const changedFilesMap = new Map<
     string,
     {
@@ -590,17 +626,33 @@ export async function getChangedFilesSince(
   // 全リポジトリを並列で取得
   await Promise.all(
     TARGET_REPOSITORIES.map(async (repo) => {
-      const url = `https://api.github.com/repos/${repo.owner}/${repo.repo}/commits?path=${repo.basePath}&per_page=100&since=${since}`;
-
       try {
-        const response = await githubFetch(url, token);
-        const commits = (await response.json()) as GitHubCommit[];
+        const commits: GitHubCommit[] = [];
+        let page = 1;
+
+        while (true) {
+          const url = `https://api.github.com/repos/${repo.owner}/${repo.repo}/commits?path=${repo.basePath}&per_page=100&since=${since}&page=${page}`;
+          const response = await githubFetch(url, token);
+          const pageCommits = (await response.json()) as GitHubCommit[];
+
+          if (pageCommits.length === 0) {
+            break;
+          }
+
+          commits.push(...pageCommits);
+
+          if (pageCommits.length < 100) {
+            break;
+          }
+
+          page++;
+        }
 
         if (commits.length === 0) return;
 
-        // 各コミットで変更されたファイルを取得（最新10件のみ）
+        // 各コミットで変更されたファイルを取得
         const commitDetails = await Promise.all(
-          commits.slice(0, 10).map(async (commit) => {
+          commits.map(async (commit) => {
             try {
               const detailUrl = `https://api.github.com/repos/${repo.owner}/${repo.repo}/commits/${commit.sha}`;
               const detailResponse = await githubFetch(detailUrl, token);
@@ -609,7 +661,7 @@ export async function getChangedFilesSince(
                 commit: { author: { date: string } };
                 files?: Array<{
                   filename: string;
-                  sha: string;
+                  sha?: string;
                   status: string;
                 }>;
               };
@@ -619,13 +671,20 @@ export async function getChangedFilesSince(
           }),
         );
 
+        if (commitDetails.some((detail) => detail === null)) {
+          failedRepos.push(repo.repo);
+          return;
+        }
+
         for (const detail of commitDetails) {
           if (!detail?.files) continue;
 
           for (const file of detail.files) {
+            if (file.status === "removed") continue;
             if (!file.filename.endsWith(".md")) continue;
             if (!isWhatsNewFile(file.filename)) continue;
             if (!file.filename.startsWith(repo.basePath)) continue;
+            if (!file.sha) continue;
 
             // 最新のコミット情報を保持
             const fileKey = `${repo.repo}:${file.filename}`;
@@ -650,9 +709,16 @@ export async function getChangedFilesSince(
           repo: repo.repo,
           error: String(error),
         });
+        failedRepos.push(repo.repo);
       }
     }),
   );
+
+  if (failedRepos.length > 0) {
+    throw new Error(
+      `Failed to get changed files for repos: ${failedRepos.join(", ")}`,
+    );
+  }
 
   const result = Array.from(changedFilesMap.values());
   logger.info("Found changed files (incremental)", { count: result.length });

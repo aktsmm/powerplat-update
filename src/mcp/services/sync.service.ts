@@ -33,6 +33,14 @@ import * as logger from "../utils/logger.js";
 let backgroundSyncPromise: Promise<SyncResult> | null = null;
 let backgroundSyncDb: SqlJsDatabase | null = null;
 
+function getTotalUpdateCount(db: SqlJsDatabase): number {
+  const result = db.exec("SELECT COUNT(*) FROM powerplat_updates");
+  if (result.length === 0 || result[0].values.length === 0) {
+    return 0;
+  }
+  return Number(result[0].values[0][0] ?? 0);
+}
+
 /**
  * 同期オプション
  */
@@ -121,6 +129,7 @@ export async function syncFromGitHub(
 ): Promise<SyncResult> {
   const startTime = Date.now();
   const { token, force = false, maxFiles = 500 } = options;
+  let latestRepoShasToPersist: Map<string, string> | null = null;
 
   try {
     // 同期状態を更新
@@ -133,13 +142,18 @@ export async function syncFromGitHub(
       (Date.now() - lastSyncDate.getTime()) / (1000 * 60 * 60);
 
     if (!force && hoursSinceLastSync < 1) {
+      const totalRecordCount = getTotalUpdateCount(db);
       logger.info("Skipping sync, last sync was recent", {
         hoursSinceLastSync,
       });
-      updateSyncCheckpoint(db, { syncStatus: "idle" });
+      updateSyncCheckpoint(db, {
+        syncStatus: "idle",
+        recordCount: totalRecordCount,
+      });
+      saveDatabase();
       return {
         success: true,
-        updatesCount: checkpoint.recordCount,
+        updatesCount: 0,
         commitsCount: 0,
         durationMs: Date.now() - startTime,
       };
@@ -157,45 +171,87 @@ export async function syncFromGitHub(
     // 🚀 リポジトリレベル差分チェック（軽量API）
     if (!force) {
       const savedRepoShas = getAllRepoShas(db);
-      const latestRepoShas = await getAllRepositoryLatestShas(token);
+      let latestRepoShas: Map<string, string> | null = null;
 
-      // 変更があったリポジトリを特定
-      const changedRepos: string[] = [];
-      for (const [repo, latestSha] of latestRepoShas) {
-        const savedSha = savedRepoShas.get(repo);
-        if (savedSha !== latestSha) {
-          changedRepos.push(repo);
+      try {
+        latestRepoShas = await getAllRepositoryLatestShas(token);
+      } catch (error) {
+        logger.warn("Repository diff check failed, falling back to full sync", {
+          error: String(error),
+          savedRepoCount: savedRepoShas.size,
+        });
+      }
+
+      if (latestRepoShas) {
+        const isRepoDiffReliable =
+          latestRepoShas.size > 0 &&
+          (savedRepoShas.size === 0 ||
+            latestRepoShas.size >= savedRepoShas.size);
+
+        if (isRepoDiffReliable) {
+          // 変更があったリポジトリを特定
+          const changedRepos: string[] = [];
+          for (const [repo, latestSha] of latestRepoShas) {
+            const savedSha = savedRepoShas.get(repo);
+            if (savedSha !== latestSha) {
+              changedRepos.push(repo);
+            }
+          }
+
+          logger.info("Repository-level diff check", {
+            totalRepos: latestRepoShas.size,
+            changedRepos: changedRepos.length,
+            changed: changedRepos,
+          });
+
+          // 変更なし → スキップ
+          if (changedRepos.length === 0) {
+            const durationMs = Date.now() - startTime;
+            const totalRecordCount = getTotalUpdateCount(db);
+            logger.info("No repository changes detected, skipping sync");
+            updateSyncCheckpoint(db, {
+              lastSync: new Date().toISOString(),
+              syncStatus: "idle",
+              recordCount: totalRecordCount,
+              lastSyncDurationMs: durationMs,
+              lastError: null,
+            });
+            saveDatabase();
+            return {
+              success: true,
+              updatesCount: 0,
+              commitsCount: 0,
+              durationMs,
+            };
+          }
+
+          // 同期成功時にのみ保存するため、ここでは保持のみ
+          latestRepoShasToPersist = latestRepoShas;
+        } else {
+          logger.warn(
+            "Repository diff check incomplete, falling back to full sync",
+            {
+              savedRepoCount: savedRepoShas.size,
+              latestRepoCount: latestRepoShas.size,
+            },
+          );
         }
-      }
-
-      logger.info("Repository-level diff check", {
-        totalRepos: latestRepoShas.size,
-        changedRepos: changedRepos.length,
-        changed: changedRepos,
-      });
-
-      // 変更なし → スキップ
-      if (changedRepos.length === 0) {
-        logger.info("No repository changes detected, skipping sync");
-        updateSyncCheckpoint(db, { syncStatus: "idle" });
-        return {
-          success: true,
-          updatesCount: checkpoint.recordCount,
-          commitsCount: 0,
-          durationMs: Date.now() - startTime,
-        };
-      }
-
-      // SHAを保存
-      for (const [repo, sha] of latestRepoShas) {
-        upsertRepoSha(db, repo, sha);
       }
     }
 
     // インクリメンタル同期: 前回同期以降に変更されたファイルのみ取得
     if (incremental && !force && checkpoint.lastSync) {
       logger.info("Using incremental sync mode");
-      return await incrementalSync(db, checkpoint.lastSync, token);
+      const result = await incrementalSync(db, checkpoint.lastSync, token);
+
+      if (result.success && latestRepoShasToPersist) {
+        for (const [repo, sha] of latestRepoShasToPersist) {
+          upsertRepoSha(db, repo, sha);
+        }
+        saveDatabase();
+      }
+
+      return result;
     }
 
     // what's-new ファイル一覧を取得（SHA 含む）
@@ -215,10 +271,13 @@ export async function syncFromGitHub(
         return existingSha !== file.sha;
       })
       .slice(0, maxFiles);
+    const deferredByMaxFiles = Math.max(files.length - filesToProcess.length, 0);
+    const isCappedByMaxFiles = deferredByMaxFiles > 0;
 
     logger.info("Files to process", {
       total: files.length,
       changed: filesToProcess.length,
+      deferredByMaxFiles,
       isFirstSync,
       force,
     });
@@ -317,15 +376,35 @@ export async function syncFromGitHub(
     }
 
     const durationMs = Date.now() - startTime;
+    const totalRecordCount = getTotalUpdateCount(db);
+    const hasProcessingErrors = errorCount > 0 || isCappedByMaxFiles;
+    const processingIssues: string[] = [];
+    if (errorCount > 0) {
+      processingIssues.push(`${errorCount} files failed`);
+    }
+    if (isCappedByMaxFiles) {
+      processingIssues.push(
+        `${deferredByMaxFiles} files deferred by maxFiles limit`,
+      );
+    }
+
+    if (latestRepoShasToPersist && !hasProcessingErrors) {
+      for (const [repo, sha] of latestRepoShasToPersist) {
+        upsertRepoSha(db, repo, sha);
+      }
+    }
 
     // 同期完了
-    updateSyncCheckpoint(db, {
-      lastSync: new Date().toISOString(),
+    const checkpointUpdate: Parameters<typeof updateSyncCheckpoint>[1] = {
       syncStatus: "idle",
-      recordCount: updatesCount,
+      recordCount: totalRecordCount,
       lastSyncDurationMs: durationMs,
-      lastError: errorCount > 0 ? `${errorCount} files failed` : null,
-    });
+      lastError: processingIssues.length > 0 ? processingIssues.join("; ") : null,
+    };
+    if (!hasProcessingErrors) {
+      checkpointUpdate.lastSync = new Date().toISOString();
+    }
+    updateSyncCheckpoint(db, checkpointUpdate);
 
     // sql.js はインメモリDBなので明示的に保存
     saveDatabase();
@@ -335,13 +414,15 @@ export async function syncFromGitHub(
       commitsCount,
       errorCount,
       durationMs,
+      success: !hasProcessingErrors,
     });
 
     return {
-      success: true,
+      success: !hasProcessingErrors,
       updatesCount,
       commitsCount,
       durationMs,
+      error: hasProcessingErrors ? processingIssues.join("; ") : undefined,
     };
   } catch (error) {
     const durationMs = Date.now() - startTime;
@@ -351,6 +432,7 @@ export async function syncFromGitHub(
       syncStatus: "error",
       lastError: errorMessage,
     });
+    saveDatabase();
 
     logger.error("Sync failed", { error: errorMessage, durationMs });
 
@@ -386,11 +468,14 @@ async function incrementalSync(
 
     if (changedFiles.length === 0) {
       const durationMs = Date.now() - startTime;
+      const totalRecordCount = getTotalUpdateCount(db);
       updateSyncCheckpoint(db, {
         lastSync: new Date().toISOString(),
         syncStatus: "idle",
+        recordCount: totalRecordCount,
         lastSyncDurationMs: durationMs,
       });
+      saveDatabase();
       logger.info("No changes since last sync", { durationMs });
       return {
         success: true,
@@ -444,13 +529,19 @@ async function incrementalSync(
     }
 
     const durationMs = Date.now() - startTime;
+    const totalRecordCount = getTotalUpdateCount(db);
+    const hasProcessingErrors = errorCount > 0;
 
-    updateSyncCheckpoint(db, {
-      lastSync: new Date().toISOString(),
+    const checkpointUpdate: Parameters<typeof updateSyncCheckpoint>[1] = {
       syncStatus: "idle",
+      recordCount: totalRecordCount,
       lastSyncDurationMs: durationMs,
       lastError: errorCount > 0 ? `${errorCount} files failed` : null,
-    });
+    };
+    if (!hasProcessingErrors) {
+      checkpointUpdate.lastSync = new Date().toISOString();
+    }
+    updateSyncCheckpoint(db, checkpointUpdate);
 
     // sql.js はインメモリDBなので明示的に保存
     saveDatabase();
@@ -459,13 +550,15 @@ async function incrementalSync(
       updatesCount,
       errorCount,
       durationMs,
+      success: !hasProcessingErrors,
     });
 
     return {
-      success: true,
+      success: !hasProcessingErrors,
       updatesCount,
       commitsCount: 0,
       durationMs,
+      error: hasProcessingErrors ? `${errorCount} files failed` : undefined,
     };
   } catch (error) {
     const durationMs = Date.now() - startTime;
@@ -475,6 +568,7 @@ async function incrementalSync(
       syncStatus: "error",
       lastError: errorMessage,
     });
+    saveDatabase();
 
     logger.error("Incremental sync failed", { error: errorMessage });
 

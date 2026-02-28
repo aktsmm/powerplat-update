@@ -66,28 +66,30 @@
 
 ### Run Meta
 
-- runId: 20260228-120000
-- status: success
-- startedAt: 2026-02-28T12:00:00+09:00
-- endedAt: 2026-02-28T12:10:00+09:00
+- runId: 20260228-170845
+- status: partial
+- startedAt: 2026-02-28T17:08:45.7663874+09:00
+- endedAt: 2026-02-28T17:42:36.3009756+09:00
 - nextRunHint: 30m
 
 ### Carry Over（次回優先）
 
 - Not Done:
-  - なし
+  - `.github/copilot-instructions.md` がリポジトリ内に存在せず、必須指示の読込を完了できなかった
 - Next Steps:
-  - [ ] テストカバレッジ追加 `~7d`
-  - [ ] CI/CD 自動化 `~14d`
+  - [ ] 削除イベント（GitHub removed）を DB 側へ反映する同期方針を実装し、削除済み記事の残留を防ぐ `~14d`
+  - [ ] 同期の排他制御を `syncFromGitHub` 全体に適用し、手動同期とバックグラウンド同期の競合を防止 `~7d`（継続理由: 同時実行時の checkpoint 上書きリスクが未解消）
+  - [ ] `powerplatUpdate.syncIntervalHours` を stale 判定とスキップ判定に接続し、設定値と実動作を一致させる `~7d`（継続理由: 設定値24hと実装1h固定の不整合が残存）
 
 ### Todo Queue
 
-- [ ] ユニットテスト整備
-- [ ] GitHub Actions ワークフロー作成
+- [ ] removed ファイル検知時の削除/無効化処理を DB クエリに追加
+- [ ] 同期のプロセス内ミューテックスを導入し、重複同期を join する
+- [ ] `syncIntervalHours` を `search` / `startup` / `manual` 各経路で統一適用
 
 ### Learnings Delta
 
-- U1: 未使用関数は静的解析で検出・削除
-- U2: バージョン定数は自動同期を検討
-- P2: 共通ユーティリティは早期に抽出
+- U8: 差分取得に上限（maxFiles/ページング不足）がある場合、checkpoint 進行を抑止しないと未処理分が恒久欠落する
+- P8: repo SHA 差分判定が失敗したときは同期全体失敗より full sync フォールバックの方が運用回復性が高い
+- P9: GitHub tree の truncated は警告継続ではなく失敗扱いにして再試行へ回す方がデータ完全性を守れる
 <!-- END:prompt-state:code-review -->

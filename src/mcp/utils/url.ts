@@ -21,6 +21,22 @@ export const REPO_TO_DOCS_BASE: Record<string, string> = {
 };
 
 /**
+ * リポジトリごとのソース内ベースパス（GitHub上の配置）
+ */
+export const REPO_TO_SOURCE_BASE: Record<string, string> = {
+  "power-platform": "power-platform",
+  "powerapps-docs": "powerapps-docs",
+  "power-automate-docs": "articles",
+  "powerbi-docs": "powerbi-docs",
+  "power-pages-docs": "power-pages-docs",
+  "power-virtual-agents": "",
+  "ai-builder": "ai-builder",
+  "powerquery-docs": "powerquery-docs",
+  "m365copilot-docs": "docs",
+  "copilot-connectors": "copilot-connectors",
+};
+
+/**
  * 製品名から Microsoft Learn ドキュメントパスへのマッピング
  */
 export const PRODUCT_TO_DOCS_PATH: Record<string, string> = {
@@ -52,16 +68,22 @@ export function convertToDocsUrl(
 ): string | null {
   // GitHub URL パターンから Learn URL を生成
   const match = fileUrl.match(
-    /github\.com\/MicrosoftDocs\/([^/]+)\/blob\/main\/([^/]+)\/(.+)\.md$/,
+    /github\.com\/MicrosoftDocs\/([^/]+)\/blob\/[^/]+\/(.+)\.md$/,
   );
   if (!match) return null;
 
-  const [, repo, , path] = match;
+  const [, repo, fullPath] = match;
 
   const docsBase = REPO_TO_DOCS_BASE[repo];
   if (!docsBase) return null;
 
-  return `https://learn.microsoft.com/${locale}/${docsBase}/${path}`;
+  let docsPath = fullPath;
+  const sourceBase = REPO_TO_SOURCE_BASE[repo];
+  if (sourceBase && docsPath.startsWith(`${sourceBase}/`)) {
+    docsPath = docsPath.slice(sourceBase.length + 1);
+  }
+
+  return `https://learn.microsoft.com/${locale}/${docsBase}/${docsPath}`;
 }
 
 /**
