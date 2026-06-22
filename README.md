@@ -7,6 +7,7 @@ English | [日本語](README_ja.md)
 [![Installs](https://badgen.net/vs-marketplace/i/yamapan.powerplat-update)](https://marketplace.visualstudio.com/items?itemName=yamapan.powerplat-update)
 [![License](https://badgen.net/badge/License/CC%20BY-NC-SA%204.0/gray)](LICENSE)
 [![GitHub](https://badgen.net/badge/GitHub/Source/black)](https://github.com/aktsmm/powerplat-update)
+[![Stars](https://badgen.net/github/stars/aktsmm/powerplat-update)](https://github.com/aktsmm/powerplat-update)
 
 > ⚠️ **Beta**: This extension is currently in beta. Features and APIs may change without notice.
 

@@ -7,6 +7,7 @@
 [![Installs](https://badgen.net/vs-marketplace/i/yamapan.powerplat-update)](https://marketplace.visualstudio.com/items?itemName=yamapan.powerplat-update)
 [![License](https://badgen.net/badge/License/CC%20BY-NC-SA%204.0/gray)](LICENSE)
 [![GitHub](https://badgen.net/badge/GitHub/Source/black)](https://github.com/aktsmm/powerplat-update)
+[![Stars](https://badgen.net/github/stars/aktsmm/powerplat-update)](https://github.com/aktsmm/powerplat-update)
 
 > ⚠️ **ベータ版**: この拡張機能は現在ベータ版です。機能や API は予告なく変更される可能性があります。フィードバックをお待ちしております！
 
