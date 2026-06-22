@@ -2,9 +2,11 @@
 
 English | [日本語](README_ja.md)
 
-[![Beta](https://img.shields.io/badge/Status-Beta-yellow)]()
-[![VS Code](https://img.shields.io/badge/VS%20Code-Extension-blue)]()
-[![MCP](https://img.shields.io/badge/MCP-Server-green)]()
+[![Status](https://badgen.net/badge/Status/Beta/orange)](https://marketplace.visualstudio.com/items?itemName=yamapan.powerplat-update)
+[![VS Marketplace](https://badgen.net/vs-marketplace/v/yamapan.powerplat-update)](https://marketplace.visualstudio.com/items?itemName=yamapan.powerplat-update)
+[![Installs](https://badgen.net/vs-marketplace/i/yamapan.powerplat-update)](https://marketplace.visualstudio.com/items?itemName=yamapan.powerplat-update)
+[![License](https://badgen.net/badge/License/CC%20BY-NC-SA%204.0/gray)](LICENSE)
+[![GitHub](https://badgen.net/badge/GitHub/Source/black)](https://github.com/aktsmm/powerplat-update)
 
 > ⚠️ **Beta**: This extension is currently in beta. Features and APIs may change without notice.
 
